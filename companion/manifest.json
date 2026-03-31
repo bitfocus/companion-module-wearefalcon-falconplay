@@ -20,7 +20,7 @@
 		"entrypoint": "../src/main.js"
 	},
 	"legacyIds": [],
-	"manufacturer": "Falcon Play",
-	"products": ["Falcon Play Server"],
+	"manufacturer": "We Are Falcon",
+	"products": ["Falcon Play"],
 	"keywords": ["falcon", "play", "casparcg", "playout", "vision mixer", "graphics"]
 }
