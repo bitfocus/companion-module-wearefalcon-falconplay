@@ -19,7 +19,7 @@ This module controls **Falcon Play Server** via its REST API.
 | **Stop All Graphic Layers** | Stop all graphic layers on a Graphic Engine (A-Z) |
 | **Clear Graphic** | Clear (instantly remove) a graphic from a specific Graphic Engine (A-Z) and layer |
 | **Clear All Graphic Layers** | Clear all graphic layers on a Graphic Engine (A-Z) |
-| **Play Video** | Play a video file on a CasparCG server channel/layer with duration control |
+| **Play Video** | Play a video file on a CasparCG server channel/layer |
 | **Play Video (Simple)** | Quick play of a video file on Server A, Layer 1 |
 | **Load Video** | Cue a video without playing |
 | **Stop Video** | Stop a video on a server/layer |

@@ -181,14 +181,6 @@ module.exports = (self) => {
 					min: 1,
 					max: 100,
 				},
-				{
-					type: 'number',
-					id: 'duration',
-					label: 'Duration (seconds, 0 = file duration)',
-					default: 0,
-					min: 0,
-					max: 86400,
-				},
 			],
 			callback: async (action) => {
 				try {
@@ -196,7 +188,6 @@ module.exports = (self) => {
 						videofile: action.options.videofile,
 						server: action.options.server,
 						layer: action.options.layer,
-						duration: action.options.duration,
 					})
 					if (!result.ok) {
 						self.log('error', `Play Video failed: ${result.error}`)
