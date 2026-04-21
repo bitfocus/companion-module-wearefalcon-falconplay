@@ -1,5 +1,5 @@
 {
-	"name": "companion-module-falcon-play",
+	"name": "companion-module-wearefalcon-falconplay",
 	"version": "1.0.0",
 	"main": "src/main.js",
 	"scripts": {
@@ -9,7 +9,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/MoodyJerup/companion-falconplay.git"
+		"url": "git+https://github.com/bitfocus/companion-module-wearefalcon-falconplay.git"
 	},
 	"engines": {
 		"node": "^22.20",

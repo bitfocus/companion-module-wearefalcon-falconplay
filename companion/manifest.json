@@ -1,12 +1,12 @@
 {
-	"id": "falcon-play",
-	"name": "falcon-play",
+	"id": "wearefalcon-falconplay",
+	"name": "wearefalcon-falconplay",
 	"shortname": "FalconPlay",
 	"description": "Control Falcon Play Server via its REST API",
 	"version": "1.0.0",
 	"license": "MIT",
-	"repository": "git+https://github.com/MoodyJerup/companion-falconplay.git",
-	"bugs": "https://github.com/MoodyJerup/companion-falconplay/issues",
+	"repository": "git+https://github.com/bitfocus/companion-module-wearefalcon-falconplay.git",
+	"bugs": "https://github.com/bitfocus/companion-module-wearefalcon-falconplay/issues",
 	"maintainers": [
 		{
 			"name": "MoodyJerup",
@@ -22,5 +22,5 @@
 	"legacyIds": [],
 	"manufacturer": "We Are Falcon",
 	"products": ["Falcon Play"],
-	"keywords": ["falcon", "play", "casparcg", "playout", "vision mixer", "graphics"]
+	"keywords": ["play", "playout", "vision mixer", "graphics"]
 }

@@ -37,6 +37,7 @@ class ModuleInstance extends InstanceBase {
 		this.config = config
 		this.stopPolling()
 		this.updateActions()
+		this.updateFeedbacks()
 		this.startPolling()
 	}
 
@@ -157,6 +158,7 @@ class ModuleInstance extends InstanceBase {
 
 		if (listsChanged) {
 			this.updateActions()
+			this.updateFeedbacks()
 		}
 	}
 

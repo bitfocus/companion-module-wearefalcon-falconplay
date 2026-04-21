@@ -1,6 +1,6 @@
-# companion-module-falcon-play
+# companion-module-wearefalcon-falconplay
 
-Companion module for controlling [Falcon Play Server](https://github.com/MoodyJerup/companion-falconplay) via its REST API.
+Companion module for controlling Falcon Play Server via its REST API.
 
 ## Configuration
 
