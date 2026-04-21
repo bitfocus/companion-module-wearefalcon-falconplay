@@ -14,7 +14,7 @@ All endpoints must return JSON with the following structure:
 ```json
 {
   "ok": true,
-  "data": { ... }
+  "...": "endpoint-specific fields"
 }
 ```
 
@@ -32,6 +32,33 @@ HTTP Status Codes:
 - `404` — Resource not found
 - `500` — Server error
 - `503` — Device/service not connected
+
+Notes:
+- The Companion module only requires the top-level `ok` field plus the endpoint-specific payload fields documented below.
+- Do not wrap successful payloads inside a mandatory `data` object unless the endpoint is updated in the module to expect that shape.
+
+---
+
+## Companion Action to Endpoint Mapping
+
+This is the exact API surface currently used by the Companion module.
+
+| Companion action | Method | Endpoint | Request body |
+|---|---|---|---|
+| Switch Input (Program) | `POST` | `/api/visionMixer/onAir` | `{ input, transitionStyle, transitionDuration }` |
+| Set Input to Preview | `POST` | `/api/visionMixer/preview` | `{ input }` |
+| Take Next | `POST` | `/api/rundown/take` | `{}` or `{ transitionStyle, transitionDuration }` |
+| Run Function | `POST` | `/api/function/run` | `{ functionUid }` |
+| Play Graphic Scene | `POST` | `/api/scene/play` | `{ sceneId }` |
+| Stop Graphic | `POST` | `/api/scene/stop` | `{ graphicChannel, graphicLayer }` |
+| Clear Graphic | `POST` | `/api/scene/clear` | `{ graphicChannel, graphicLayer }` |
+| Stop All Graphic Layers | `POST` | `/api/scene/stop` | `{ graphicChannel, graphicLayer: -1 }` |
+| Clear All Graphic Layers | `POST` | `/api/scene/clear` | `{ graphicChannel, graphicLayer: -1 }` |
+| Load Video | `POST` | `/api/media/load` | `{ videofile, server, layer }` |
+| Play Video (Simple) | `POST` | `/api/media/play` | `{ server, layer }` |
+| Play Video | `POST` | `/api/media/play` | `{ videofile, server, layer }` |
+| Stop Video | `POST` | `/api/media/stop` | `{ server, layer }` |
+| Clear Video | `POST` | `/api/media/clear` | `{ server, layer }` |
 
 ---
 
@@ -190,7 +217,7 @@ Switch a vision mixer input to **Program (on-air)**
 
 ---
 
-## NEW ENDPOINTS REQUIRED (Not Yet Implemented)
+## New Endpoints and Required Endpoint Enhancements
 
 ### 4. Vision Mixer Preview Control (NEW)
 #### `POST /api/visionMixer/preview`
@@ -344,8 +371,7 @@ Play a video file
 {
   "videofile": "INTRO.mp4",
   "server": "A",
-  "layer": 1,
-  "duration": 0
+  "layer": 1
 }
 ```
 
@@ -355,12 +381,23 @@ Play a video file
 | `videofile` | string | Yes | — | Video filename from `/api/media/videos` |
 | `server` | string | No | `"A"` | Video server channel (`"A"` to `"D"`) |
 | `layer` | number | No | `1` | CasparCG layer number (1–100) |
-| `duration` | number | No | `0` | Duration in seconds; 0 = file duration |
 
 **Response:**
 ```json
 { "ok": true }
 ```
+
+This endpoint should also support a second mode where a previously loaded video is started by channel/layer only.
+
+**Alternate request for Play Video (Simple):**
+```json
+{
+  "server": "A",
+  "layer": 1
+}
+```
+
+In this mode, Falcon Play should start playback of the media already loaded/cued on that output.
 
 ---
 
@@ -376,7 +413,7 @@ Cue (load) a video without playing
 }
 ```
 
-**Parameters:** Same as `/api/media/play` (except no `duration`)
+**Parameters:** Same as `/api/media/play`
 
 **Response:**
 ```json
@@ -435,10 +472,22 @@ Advance the rundown (take cued item on-air)
 
 **Request:**
 ```json
+{
+  "transitionStyle": "cut",
+  "transitionDuration": 0
+}
+```
+
+**Alternate request using the item's default transition:**
+```json
 {}
 ```
 
-**Parameters:** None
+**Parameters:**
+| Field | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| `transitionStyle` | string | No | item default | `"cut"`, `"mix"`, `"dip"`, `"wipe"`, `"sting"`; omit to use the cued item's own configured transition |
+| `transitionDuration` | number | No | item default | Duration in frames; only sent when `transitionStyle` is explicitly set |
 
 **Response:**
 ```json
@@ -451,17 +500,40 @@ Advance the rundown (take cued item on-air)
 
 ---
 
-## Summary of Missing Endpoints
+## Summary of What Falcon Play Must Support
 
-The following endpoints must be added to Falcon Play Server for full Companion module compatibility:
+The following items must be implemented for full Companion module compatibility:
 
-| Endpoint | Method | Purpose | Priority |
-|---|---|---|---|
-| `/api/visionMixer/preview` | `POST` | Set input to Preview/PVW | **HIGH** |
-| `/api/scene/stop` | `POST` | Stop graphic(s) with animation | **HIGH** |
-| `/api/scene/clear` | `POST` | Clear graphic(s) instantly | **HIGH** |
+| Endpoint | Method | Type | Purpose | Priority |
+|---|---|---|---|---|
+| `/api/visionMixer/preview` | `POST` | New endpoint | Set input to Preview/PVW | **HIGH** |
+| `/api/scene/stop` | `POST` | New endpoint | Stop graphic(s) with animation | **HIGH** |
+| `/api/scene/clear` | `POST` | New endpoint | Clear graphic(s) instantly | **HIGH** |
+| `/api/media/play` | `POST` | Enhance existing endpoint | Accept both `{ videofile, server, layer }` and `{ server, layer }` | **HIGH** |
+| `/api/rundown/take` | `POST` | Enhance existing endpoint | Accept `{}` for item default transition or `{ transitionStyle, transitionDuration }` | **HIGH** |
 
-All other endpoints are already implemented or use existing paths.
+All other endpoints are already implemented or already match the Companion module's expectations.
+
+## Endpoint Checklist
+
+Falcon Play should support the following complete set for this Companion module:
+
+- `GET /api/status`
+- `GET /api/inputs`
+- `GET /api/functions`
+- `GET /api/scenes`
+- `GET /api/media/videos`
+- `POST /api/visionMixer/onAir`
+- `POST /api/visionMixer/preview`
+- `POST /api/function/run`
+- `POST /api/scene/play`
+- `POST /api/scene/stop`
+- `POST /api/scene/clear`
+- `POST /api/media/load`
+- `POST /api/media/play`
+- `POST /api/media/stop`
+- `POST /api/media/clear`
+- `POST /api/rundown/take`
 
 ---
 
@@ -477,6 +549,16 @@ curl http://localhost/api/status
 curl -X POST http://localhost/api/visionMixer/preview \
   -H "Content-Type: application/json" \
   -d '{"input": 1}'
+
+# Test take next using item default transition
+curl -X POST http://localhost/api/rundown/take \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Test take next using explicit transition
+curl -X POST http://localhost/api/rundown/take \
+  -H "Content-Type: application/json" \
+  -d '{"transitionStyle": "mix", "transitionDuration": 25}'
 
 # Test stop graphic
 curl -X POST http://localhost/api/scene/stop \
@@ -498,3 +580,4 @@ curl -X POST http://localhost/api/scene/clear \
 3. **Timeout:** Companion expects responses within 5 seconds. Avoid long-running operations on these endpoints.
 4. **Polling:** Status endpoint is called frequently (every 2s); keep response payload minimal and updates fast.
 5. **List Updates:** Inputs, functions, scenes, and videos are refreshed every 10 seconds; caching is acceptable.
+6. **Program vs rundown transitions:** `POST /api/visionMixer/onAir` always receives explicit transition settings from Companion, while `POST /api/rundown/take` may receive either explicit transition settings or an empty body to mean "use the item's default transition".

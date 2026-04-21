@@ -16,6 +16,8 @@ module.exports = (self) => {
 		{ id: 'sting', label: 'Sting' },
 	]
 
+	const rundownTransitionChoices = [{ id: 'default', label: 'Default' }, ...transitionChoices]
+
 	const serverChoices = [
 		{ id: 'A', label: 'Server A' },
 		{ id: 'B', label: 'Server B' },
@@ -100,6 +102,46 @@ module.exports = (self) => {
 			},
 		},
 
+		// --- Take Next (Rundown) ---
+		takeNext: {
+			name: 'Take Next',
+			description: 'Take the cued item on-air (rundown advance)',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'transitionStyle',
+					label: 'Transition Style',
+					choices: rundownTransitionChoices,
+					default: 'default',
+				},
+				{
+					type: 'number',
+					id: 'transitionDuration',
+					label: 'Transition Duration (frames)',
+					default: 0,
+					min: 0,
+					max: 250,
+				},
+			],
+			callback: async (action) => {
+				try {
+					const requestBody = {}
+
+					if (action.options.transitionStyle !== 'default') {
+						requestBody.transitionStyle = action.options.transitionStyle
+						requestBody.transitionDuration = action.options.transitionDuration
+					}
+
+					const result = await self.httpPost('/api/rundown/take', requestBody)
+					if (!result.ok) {
+						self.log('error', `Take Next failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Take Next error: ${err.message}`)
+				}
+			},
+		},
+
 		// --- Run Function ---
 		runFunction: {
 			name: 'Run Function',
@@ -150,196 +192,6 @@ module.exports = (self) => {
 					}
 				} catch (err) {
 					self.log('error', `Play Scene error: ${err.message}`)
-				}
-			},
-		},
-
-		// --- Play Video ---
-		playVideo: {
-			name: 'Play Video',
-			description: 'Play a video file on a CasparCG server',
-			options: [
-				{
-					type: 'dropdown',
-					id: 'videofile',
-					label: 'Video File',
-					choices: videoChoices,
-					default: videoChoices[0]?.id ?? '',
-				},
-				{
-					type: 'dropdown',
-					id: 'server',
-					label: 'Server Channel',
-					choices: serverChoices,
-					default: 'A',
-				},
-				{
-					type: 'number',
-					id: 'layer',
-					label: 'Layer',
-					default: 1,
-					min: 1,
-					max: 100,
-				},
-			],
-			callback: async (action) => {
-				try {
-					const result = await self.httpPost('/api/media/play', {
-						videofile: action.options.videofile,
-						server: action.options.server,
-						layer: action.options.layer,
-					})
-					if (!result.ok) {
-						self.log('error', `Play Video failed: ${result.error}`)
-					}
-				} catch (err) {
-					self.log('error', `Play Video error: ${err.message}`)
-				}
-			},
-		},
-
-		// --- Play Video (Simple) ---
-		playVideoSimple: {
-			name: 'Play Video (Simple)',
-			description: 'Quick play of a video file on Server A, Layer 1',
-			options: [
-				{
-					type: 'dropdown',
-					id: 'videofile',
-					label: 'Video File',
-					choices: videoChoices,
-					default: videoChoices[0]?.id ?? '',
-				},
-			],
-			callback: async (action) => {
-				try {
-					const result = await self.httpPost('/api/media/play', {
-						videofile: action.options.videofile,
-						server: 'A',
-						layer: 1,
-						duration: 0,
-					})
-					if (!result.ok) {
-						self.log('error', `Play Video (Simple) failed: ${result.error}`)
-					}
-				} catch (err) {
-					self.log('error', `Play Video (Simple) error: ${err.message}`)
-				}
-			},
-		},
-
-		// --- Load Video (Preview/Cue) ---
-		loadVideo: {
-			name: 'Load Video',
-			description: 'Cue a video without playing',
-			options: [
-				{
-					type: 'dropdown',
-					id: 'videofile',
-					label: 'Video File',
-					choices: videoChoices,
-					default: videoChoices[0]?.id ?? '',
-				},
-				{
-					type: 'dropdown',
-					id: 'server',
-					label: 'Server Channel',
-					choices: serverChoices,
-					default: 'A',
-				},
-				{
-					type: 'number',
-					id: 'layer',
-					label: 'Layer',
-					default: 1,
-					min: 1,
-					max: 100,
-				},
-			],
-			callback: async (action) => {
-				try {
-					const result = await self.httpPost('/api/media/load', {
-						videofile: action.options.videofile,
-						server: action.options.server,
-						layer: action.options.layer,
-					})
-					if (!result.ok) {
-						self.log('error', `Load Video failed: ${result.error}`)
-					}
-				} catch (err) {
-					self.log('error', `Load Video error: ${err.message}`)
-				}
-			},
-		},
-
-		// --- Stop Video ---
-		stopVideo: {
-			name: 'Stop Video',
-			description: 'Stop a video on a server/layer',
-			options: [
-				{
-					type: 'dropdown',
-					id: 'server',
-					label: 'Server Channel',
-					choices: serverChoices,
-					default: 'A',
-				},
-				{
-					type: 'number',
-					id: 'layer',
-					label: 'Layer',
-					default: 1,
-					min: 1,
-					max: 100,
-				},
-			],
-			callback: async (action) => {
-				try {
-					const result = await self.httpPost('/api/media/stop', {
-						server: action.options.server,
-						layer: action.options.layer,
-					})
-					if (!result.ok) {
-						self.log('error', `Stop Video failed: ${result.error}`)
-					}
-				} catch (err) {
-					self.log('error', `Stop Video error: ${err.message}`)
-				}
-			},
-		},
-
-		// --- Clear Video ---
-		clearVideo: {
-			name: 'Clear Video',
-			description: 'Clear a video from a server/layer (remove completely)',
-			options: [
-				{
-					type: 'dropdown',
-					id: 'server',
-					label: 'Server Channel',
-					choices: serverChoices,
-					default: 'A',
-				},
-				{
-					type: 'number',
-					id: 'layer',
-					label: 'Layer',
-					default: 1,
-					min: 1,
-					max: 100,
-				},
-			],
-			callback: async (action) => {
-				try {
-					const result = await self.httpPost('/api/media/clear', {
-						server: action.options.server,
-						layer: action.options.layer,
-					})
-					if (!result.ok) {
-						self.log('error', `Clear Video failed: ${result.error}`)
-					}
-				} catch (err) {
-					self.log('error', `Clear Video error: ${err.message}`)
 				}
 			},
 		},
@@ -472,19 +324,198 @@ module.exports = (self) => {
 			},
 		},
 
-		// --- Take Next (Rundown) ---
-		takeNext: {
-			name: 'Take Next',
-			description: 'Take the cued item on-air (rundown advance)',
-			options: [],
-			callback: async () => {
+		// --- Load Video (Preview/Cue) ---
+		loadVideo: {
+			name: 'Load Video',
+			description: 'Cue a video without playing',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'videofile',
+					label: 'Video File',
+					choices: videoChoices,
+					default: videoChoices[0]?.id ?? '',
+				},
+				{
+					type: 'dropdown',
+					id: 'server',
+					label: 'Server Channel',
+					choices: serverChoices,
+					default: 'A',
+				},
+				{
+					type: 'number',
+					id: 'layer',
+					label: 'Layer',
+					default: 1,
+					min: 1,
+					max: 100,
+				},
+			],
+			callback: async (action) => {
 				try {
-					const result = await self.httpPost('/api/rundown/take', {})
+					const result = await self.httpPost('/api/media/load', {
+						videofile: action.options.videofile,
+						server: action.options.server,
+						layer: action.options.layer,
+					})
 					if (!result.ok) {
-						self.log('error', `Take Next failed: ${result.error}`)
+						self.log('error', `Load Video failed: ${result.error}`)
 					}
 				} catch (err) {
-					self.log('error', `Take Next error: ${err.message}`)
+					self.log('error', `Load Video error: ${err.message}`)
+				}
+			},
+		},
+
+		// --- Play Video (Simple) ---
+		playVideoSimple: {
+			name: 'Play Video (Simple)',
+			description: 'Trigger play on an already loaded video channel/layer',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'server',
+					label: 'Server Channel',
+					choices: serverChoices,
+					default: 'A',
+				},
+				{
+					type: 'number',
+					id: 'layer',
+					label: 'Layer',
+					default: 1,
+					min: 1,
+					max: 100,
+				},
+			],
+			callback: async (action) => {
+				try {
+					const result = await self.httpPost('/api/media/play', {
+						server: action.options.server,
+						layer: action.options.layer,
+					})
+					if (!result.ok) {
+						self.log('error', `Play Video (Simple) failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Play Video (Simple) error: ${err.message}`)
+				}
+			},
+		},
+
+		// --- Play Video ---
+		playVideo: {
+			name: 'Play Video',
+			description: 'Play a video file on a CasparCG server',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'videofile',
+					label: 'Video File',
+					choices: videoChoices,
+					default: videoChoices[0]?.id ?? '',
+				},
+				{
+					type: 'dropdown',
+					id: 'server',
+					label: 'Server Channel',
+					choices: serverChoices,
+					default: 'A',
+				},
+				{
+					type: 'number',
+					id: 'layer',
+					label: 'Layer',
+					default: 1,
+					min: 1,
+					max: 100,
+				},
+			],
+			callback: async (action) => {
+				try {
+					const result = await self.httpPost('/api/media/play', {
+						videofile: action.options.videofile,
+						server: action.options.server,
+						layer: action.options.layer,
+					})
+					if (!result.ok) {
+						self.log('error', `Play Video failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Play Video error: ${err.message}`)
+				}
+			},
+		},
+
+		// --- Stop Video ---
+		stopVideo: {
+			name: 'Stop Video',
+			description: 'Stop a video on a server/layer',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'server',
+					label: 'Server Channel',
+					choices: serverChoices,
+					default: 'A',
+				},
+				{
+					type: 'number',
+					id: 'layer',
+					label: 'Layer',
+					default: 1,
+					min: 1,
+					max: 100,
+				},
+			],
+			callback: async (action) => {
+				try {
+					const result = await self.httpPost('/api/media/stop', {
+						server: action.options.server,
+						layer: action.options.layer,
+					})
+					if (!result.ok) {
+						self.log('error', `Stop Video failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Stop Video error: ${err.message}`)
+				}
+			},
+		},
+
+		// --- Clear Video ---
+		clearVideo: {
+			name: 'Clear Video',
+			description: 'Clear a video from a server/layer (remove completely)',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'server',
+					label: 'Server Channel',
+					choices: serverChoices,
+					default: 'A',
+				},
+				{
+					type: 'number',
+					id: 'layer',
+					label: 'Layer',
+					default: 1,
+					min: 1,
+					max: 100,
+				},
+			],
+			callback: async (action) => {
+				try {
+					const result = await self.httpPost('/api/media/clear', {
+						server: action.options.server,
+						layer: action.options.layer,
+					})
+					if (!result.ok) {
+						self.log('error', `Clear Video failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Clear Video error: ${err.message}`)
 				}
 			},
 		},
