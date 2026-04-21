@@ -26,7 +26,7 @@ module.exports = (self) => {
 	self.setActionDefinitions({
 		// --- Switch Input / Camera ---
 		switchInput: {
-			name: 'Switch Input (Camera)',
+			name: 'Switch Input',
 			description: 'Switch a vision mixer input to Program (on-air)',
 			options: [
 				{
