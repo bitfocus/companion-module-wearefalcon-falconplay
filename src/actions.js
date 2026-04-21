@@ -31,7 +31,7 @@ module.exports = (self) => {
 	self.setActionDefinitions({
 		// --- Switch Input / Camera ---
 		switchInput: {
-			name: 'Switch Input (Camera)',
+			name: 'Switch Input (Program)',
 			description: 'Switch a vision mixer input to Program (on-air)',
 			options: [
 				{
@@ -69,6 +69,33 @@ module.exports = (self) => {
 					}
 				} catch (err) {
 					self.log('error', `Switch Input error: ${err.message}`)
+				}
+			},
+		},
+
+		// --- Set Input to Preview ---
+		setInputPreview: {
+			name: 'Set Input to Preview',
+			description: 'Set a vision mixer input to Preview (PVW)',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'input',
+					label: 'Input',
+					choices: inputChoices,
+					default: inputChoices[0]?.id ?? 0,
+				},
+			],
+			callback: async (action) => {
+				try {
+					const result = await self.httpPost('/api/visionMixer/preview', {
+						input: action.options.input,
+					})
+					if (!result.ok) {
+						self.log('error', `Set Input to Preview failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Set Input to Preview error: ${err.message}`)
 				}
 			},
 		},
@@ -180,10 +207,40 @@ module.exports = (self) => {
 			},
 		},
 
+		// --- Play Video (Simple) ---
+		playVideoSimple: {
+			name: 'Play Video (Simple)',
+			description: 'Quick play of a video file on Server A, Layer 1',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'videofile',
+					label: 'Video File',
+					choices: videoChoices,
+					default: videoChoices[0]?.id ?? '',
+				},
+			],
+			callback: async (action) => {
+				try {
+					const result = await self.httpPost('/api/media/play', {
+						videofile: action.options.videofile,
+						server: 'A',
+						layer: 1,
+						duration: 0,
+					})
+					if (!result.ok) {
+						self.log('error', `Play Video (Simple) failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Play Video (Simple) error: ${err.message}`)
+				}
+			},
+		},
+
 		// --- Load Video (Preview/Cue) ---
 		loadVideo: {
-			name: 'Load Video (Preview)',
-			description: 'Cue a video in preview without playing',
+			name: 'Load Video',
+			description: 'Cue a video without playing',
 			options: [
 				{
 					type: 'dropdown',

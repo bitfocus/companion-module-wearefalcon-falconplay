@@ -13,7 +13,8 @@ Companion module for controlling Falcon Play Server via its REST API.
 
 | Action | Description |
 |---|---|
-| **Switch Input (Camera)** | Switch a vision mixer input to Program with transition style (cut/mix/dip/wipe/sting) and duration |
+| **Switch Input (Program)** | Switch a vision mixer input to Program (on-air) with transition style (cut/mix/dip/wipe/sting) and duration |
+| **Set Input to Preview** | Set a vision mixer input to Preview (PVW) for cueing |
 | **Run Function** | Execute a Falcon Play automation function/macro |
 | **Play Graphic Scene** | Play a saved CasparCG graphic scene |
 | **Stop Graphic** | Stop a graphic on a specific Graphic Engine (A–Z) and layer (with out-animation) |
@@ -21,7 +22,8 @@ Companion module for controlling Falcon Play Server via its REST API.
 | **Clear Graphic** | Clear (instantly remove) a graphic from a Graphic Engine (A–Z) and layer |
 | **Clear All Graphic Layers** | Clear all graphic layers on a Graphic Engine (A–Z) |
 | **Play Video** | Play a video file on a CasparCG server channel/layer |
-| **Load Video (Preview)** | Cue a video in preview without playing |
+| **Play Video (Simple)** | Quick play of a video file on Server A, Layer 1 |
+| **Load Video** | Cue a video without playing |
 | **Stop Video** | Stop a video on a server/layer |
 | **Clear Video** | Clear (remove) a video from a server/layer |
 | **Take Next** | Advance the rundown – take the cued item on-air |
