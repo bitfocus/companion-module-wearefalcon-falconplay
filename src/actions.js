@@ -142,6 +142,74 @@ module.exports = (self) => {
 			},
 		},
 
+		// --- Move Next Forward (Rundown Cue) ---
+		moveNextForward: {
+			name: 'Move Next Forward',
+			description: 'Move the cued rundown item one step forward without taking it on-air',
+			options: [],
+			callback: async () => {
+				try {
+					const result = await self.httpPost('/api/rundown/move-next-forward', {})
+					if (!result.ok) {
+						self.log('error', `Move Next Forward failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Move Next Forward error: ${err.message}`)
+				}
+			},
+		},
+
+		// --- Move Next Backward (Rundown Cue) ---
+		moveNextBackward: {
+			name: 'Move Next Backward',
+			description: 'Move the cued rundown item one step backward without taking it on-air',
+			options: [],
+			callback: async () => {
+				try {
+					const result = await self.httpPost('/api/rundown/move-next-backward', {})
+					if (!result.ok) {
+						self.log('error', `Move Next Backward failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Move Next Backward error: ${err.message}`)
+				}
+			},
+		},
+
+		// --- Take Latest Live to Preview ---
+		takeLatestLiveToPreview: {
+			name: 'Take Latest Live to Preview',
+			description: 'Cue the most recently played live/Extern input as the next temporary preview item',
+			options: [],
+			callback: async () => {
+				try {
+					const result = await self.httpPost('/api/rundown/latest-extern-to-preview', {})
+					if (!result.ok) {
+						self.log('error', `Take Latest Live to Preview failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Take Latest Live to Preview error: ${err.message}`)
+				}
+			},
+		},
+
+		// --- Take Latest SS/DVE to Preview ---
+		takeLatestSsDveToPreview: {
+			name: 'Take Latest SS/DVE to Preview',
+			description: 'Cue the most recently played SuperSource or DVE input as the next temporary preview item',
+			options: [],
+			callback: async () => {
+				try {
+					const result = await self.httpPost('/api/rundown/latest-ss-dve-to-preview', {})
+					if (!result.ok) {
+						self.log('error', `Take Latest SS/DVE to Preview failed: ${result.error}`)
+					}
+				} catch (err) {
+					self.log('error', `Take Latest SS/DVE to Preview error: ${err.message}`)
+				}
+			},
+		},
+
 		// --- Run Function ---
 		runFunction: {
 			name: 'Run Function',

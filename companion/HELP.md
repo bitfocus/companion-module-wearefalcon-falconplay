@@ -14,6 +14,10 @@ This module controls **Falcon Play Server** via its REST API.
 | **Switch Input (Program)** | Switch a vision mixer input to Program (on-air) with transition style |
 | **Set Input to Preview** | Set a vision mixer input to Preview (PVW) for cueing |
 | **Take Next** | Advance the rundown and take the cued item on-air with either the item's default transition or an explicit transition style and duration |
+| **Move Next Forward** | Move the cued rundown item one step forward without taking it on-air |
+| **Move Next Backward** | Move the cued rundown item one step backward without taking it on-air |
+| **Take Latest Live to Preview** | Cue the most recently played live/Extern input as the next temporary preview item |
+| **Take Latest SS/DVE to Preview** | Cue the most recently played SuperSource or DVE input as the next temporary preview item |
 | **Run Function** | Execute a Falcon Play automation function/macro |
 | **Play Graphic Scene** | Play a saved CasparCG graphic scene |
 | **Stop Graphic** | Stop a graphic on a specific Graphic Engine (A-Z) and layer |

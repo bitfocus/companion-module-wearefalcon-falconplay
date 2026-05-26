@@ -3,7 +3,7 @@
 	"name": "wearefalcon-falconplay",
 	"shortname": "FalconPlay",
 	"description": "Control Falcon Play Server via its REST API",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"license": "MIT",
 	"repository": "git+https://github.com/bitfocus/companion-module-wearefalcon-falconplay.git",
 	"bugs": "https://github.com/bitfocus/companion-module-wearefalcon-falconplay/issues",

@@ -48,6 +48,10 @@ This is the exact API surface currently used by the Companion module.
 | Switch Input (Program) | `POST` | `/api/visionMixer/onAir` | `{ input, transitionStyle, transitionDuration }` |
 | Set Input to Preview | `POST` | `/api/visionMixer/preview` | `{ input }` |
 | Take Next | `POST` | `/api/rundown/take` | `{}` or `{ transitionStyle, transitionDuration }` |
+| Move Next Forward | `POST` | `/api/rundown/move-next-forward` | `{}` |
+| Move Next Backward | `POST` | `/api/rundown/move-next-backward` | `{}` |
+| Take Latest Live to Preview | `POST` | `/api/rundown/latest-extern-to-preview` | `{}` |
+| Take Latest SS/DVE to Preview | `POST` | `/api/rundown/latest-ss-dve-to-preview` | `{}` |
 | Run Function | `POST` | `/api/function/run` | `{ functionUid }` |
 | Play Graphic Scene | `POST` | `/api/scene/play` | `{ sceneId }` |
 | Stop Graphic | `POST` | `/api/scene/stop` | `{ graphicChannel, graphicLayer }` |
@@ -500,6 +504,140 @@ Advance the rundown (take cued item on-air)
 
 ---
 
+#### `POST /api/rundown/move-next-forward`
+Move the cued item one step forward in the active rundown without taking it on-air.
+
+**Request:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "moved": true,
+  "cuedUID": "abc123",
+  "cuedIndex": 7,
+  "itemName": "My Next Item"
+}
+```
+
+**Parameters:** None
+
+**Response fields:**
+| Field | Type | Notes |
+|---|---|---|
+| `ok` | boolean | True when request was processed |
+| `moved` | boolean | False when cue is already at the last item |
+| `cuedUID` | string | UID of the cued item after the operation |
+| `cuedIndex` | number | 0-based cue index after the operation |
+| `itemName` | string or null | Name of the cued item after the operation |
+
+**Errors:**
+- `400` — No rundown is on-air or the rundown is empty
+- `500` — Internal server error
+
+#### `POST /api/rundown/move-next-backward`
+Move the cued item one step backward in the active rundown without taking it on-air.
+
+**Request:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "moved": true,
+  "cuedUID": "abc123",
+  "cuedIndex": 5,
+  "itemName": "Previous Item"
+}
+```
+
+**Parameters:** None
+
+**Response fields:** Same as `/api/rundown/move-next-forward`
+
+**Errors:**
+- `400` — No rundown is on-air or the rundown is empty
+- `500` — Internal server error
+
+**Behavior notes for both move endpoints:**
+- These operations adjust cue position only; they do not trigger playback or transition.
+- They use force-cue semantics internally.
+- They clamp at the rundown boundaries.
+- At the boundaries, return `ok: true` and `moved: false`.
+
+---
+
+#### `POST /api/rundown/latest-extern-to-preview`
+Cue the most recently played live/Extern input as the next temporary preview item.
+
+**Request:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "uid": "a3f9c2x1b",
+  "name": "EXT 1"
+}
+```
+
+**Response fields:**
+| Field | Type | Notes |
+|---|---|---|
+| `uid` | string | UID of the inserted temporary preview item |
+| `name` | string | Name of the inserted input |
+
+**Errors:**
+- `400` — No on-air rundown, or no on-air item to insert after
+- `404` — No Extern input found in the played history of the active rundown
+
+**Behavior:**
+- Searches backward through the played history, starting at the current on-air item.
+- Inserts a temporary preview item immediately after the current on-air item.
+- Replaces any existing temporary item at the preview position.
+- Force-cues the new temporary item as next.
+- Does not perform TAKE or transition by itself.
+
+#### `POST /api/rundown/latest-ss-dve-to-preview`
+Cue the most recently played SuperSource or DVE input as the next temporary preview item.
+
+**Request:**
+```json
+{}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "uid": "b7d1e4m2c",
+  "name": "SuperSource 1"
+}
+```
+
+**Response fields:** Same as `/api/rundown/latest-extern-to-preview`
+
+**Errors:**
+- `400` — No on-air rundown, or no on-air item to insert after
+- `404` — No SuperSource or DVE input found in the played history of the active rundown
+
+**Behavior:**
+- Searches backward through the played history for the latest input with subtype `SuperSource` or `DVE`.
+- Inserts and force-cues a temporary preview item.
+- Replaces any existing temporary item at the preview position.
+- Does not perform TAKE or transition by itself.
+
+---
+
 ## Summary of What Falcon Play Must Support
 
 The following items must be implemented for full Companion module compatibility:
@@ -511,6 +649,10 @@ The following items must be implemented for full Companion module compatibility:
 | `/api/scene/clear` | `POST` | New endpoint | Clear graphic(s) instantly | **HIGH** |
 | `/api/media/play` | `POST` | Enhance existing endpoint | Accept both `{ videofile, server, layer }` and `{ server, layer }` | **HIGH** |
 | `/api/rundown/take` | `POST` | Enhance existing endpoint | Accept `{}` for item default transition or `{ transitionStyle, transitionDuration }` | **HIGH** |
+| `/api/rundown/move-next-forward` | `POST` | New endpoint | Move cued item one step forward | **HIGH** |
+| `/api/rundown/move-next-backward` | `POST` | New endpoint | Move cued item one step backward | **HIGH** |
+| `/api/rundown/latest-extern-to-preview` | `POST` | New endpoint | Cue latest live/Extern item to preview | **HIGH** |
+| `/api/rundown/latest-ss-dve-to-preview` | `POST` | New endpoint | Cue latest SuperSource or DVE item to preview | **HIGH** |
 
 All other endpoints are already implemented or already match the Companion module's expectations.
 
@@ -534,6 +676,10 @@ Falcon Play should support the following complete set for this Companion module:
 - `POST /api/media/stop`
 - `POST /api/media/clear`
 - `POST /api/rundown/take`
+- `POST /api/rundown/move-next-forward`
+- `POST /api/rundown/move-next-backward`
+- `POST /api/rundown/latest-extern-to-preview`
+- `POST /api/rundown/latest-ss-dve-to-preview`
 
 ---
 
@@ -560,6 +706,26 @@ curl -X POST http://localhost/api/rundown/take \
   -H "Content-Type: application/json" \
   -d '{"transitionStyle": "mix", "transitionDuration": 25}'
 
+# Test move next forward
+curl -X POST http://localhost/api/rundown/move-next-forward \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Test move next backward
+curl -X POST http://localhost/api/rundown/move-next-backward \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Test latest live/Extern to preview
+curl -X POST http://localhost/api/rundown/latest-extern-to-preview \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Test latest SS/DVE to preview
+curl -X POST http://localhost/api/rundown/latest-ss-dve-to-preview \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
 # Test stop graphic
 curl -X POST http://localhost/api/scene/stop \
   -H "Content-Type: application/json" \
@@ -581,3 +747,5 @@ curl -X POST http://localhost/api/scene/clear \
 4. **Polling:** Status endpoint is called frequently (every 2s); keep response payload minimal and updates fast.
 5. **List Updates:** Inputs, functions, scenes, and videos are refreshed every 10 seconds; caching is acceptable.
 6. **Program vs rundown transitions:** `POST /api/visionMixer/onAir` always receives explicit transition settings from Companion, while `POST /api/rundown/take` may receive either explicit transition settings or an empty body to mean "use the item's default transition".
+7. **Cue move operations:** `POST /api/rundown/move-next-forward` and `POST /api/rundown/move-next-backward` should be safe to call repeatedly and should return updated cue metadata so Companion can log or display the result.
+8. **Latest-to-preview operations:** `POST /api/rundown/latest-extern-to-preview` and `POST /api/rundown/latest-ss-dve-to-preview` should insert a temporary preview item and return the new item's `uid` and `name`.

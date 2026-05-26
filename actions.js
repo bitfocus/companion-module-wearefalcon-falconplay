@@ -177,8 +177,8 @@ module.exports = (self) => {
 
 		// --- Load Video (Preview/Cue) ---
 		loadVideo: {
-			name: 'Load Video (Preview)',
-			description: 'Cue a video in preview without playing',
+			name: 'Load Video',
+			description: 'Cue a video without playing',
 			options: [
 				{
 					type: 'dropdown',
