@@ -1,4 +1,4 @@
-# Release Notes v1.0.2
+# Release Notes v1.1.0
 
 This release adds rundown cue-moving and latest-preview helpers to Falcon Play Companion, plus the matching Falcon Play API documentation.
 
@@ -22,5 +22,9 @@ This release adds rundown cue-moving and latest-preview helpers to Falcon Play C
 
 ## Version bump
 
-- `package.json` updated to `1.0.2`
-- `companion/manifest.json` updated to `1.0.2`
+- `package.json` updated to `1.1.0`
+- `companion/manifest.json` updated to `1.1.0`
+
+## Notes
+
+Version bumped from 1.0.2 to 1.1.0 per Bitfocus review feedback: new features require a minor version bump.
