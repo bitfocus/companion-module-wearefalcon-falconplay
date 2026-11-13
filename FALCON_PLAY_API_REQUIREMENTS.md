@@ -1,6 +1,6 @@
 # Falcon Play Server - Required REST API Endpoints
 
-This document specifies all REST API endpoints required by the **Companion Module for Falcon Play Server** (v1.0.0+).
+This document specifies all REST API endpoints required by the **Companion Module for Falcon Play Server** through v1.2.0, including the new Subitems, Favorites, and logical-input contracts.
 
 The Companion module polls status every 2 seconds and refreshes lists (inputs, functions, scenes, videos) every 10 seconds. All responses must follow the standard response format.
 
@@ -11,22 +11,25 @@ The Companion module polls status every 2 seconds and refreshes lists (inputs, f
 All endpoints must return JSON with the following structure:
 
 ### Success Response
+
 ```json
 {
-  "ok": true,
-  "...": "endpoint-specific fields"
+	"ok": true,
+	"...": "endpoint-specific fields"
 }
 ```
 
 ### Error Response
+
 ```json
 {
-  "ok": false,
-  "error": "Human-readable error message"
+	"ok": false,
+	"error": "Human-readable error message"
 }
 ```
 
 HTTP Status Codes:
+
 - `200` — Success
 - `400` — Bad request (missing/invalid parameters)
 - `404` — Resource not found
@@ -34,6 +37,7 @@ HTTP Status Codes:
 - `503` — Device/service not connected
 
 Notes:
+
 - The Companion module only requires the top-level `ok` field plus the endpoint-specific payload fields documented below.
 - Do not wrap successful payloads inside a mandatory `data` object unless the endpoint is updated in the module to expect that shape.
 
@@ -43,167 +47,196 @@ Notes:
 
 This is the exact API surface currently used by the Companion module.
 
-| Companion action | Method | Endpoint | Request body |
-|---|---|---|---|
-| Switch Input (Program) | `POST` | `/api/visionMixer/onAir` | `{ input, transitionStyle, transitionDuration }` |
-| Set Input to Preview | `POST` | `/api/visionMixer/preview` | `{ input }` |
-| Take Next | `POST` | `/api/rundown/take` | `{}` or `{ transitionStyle, transitionDuration }` |
-| Move Next Forward | `POST` | `/api/rundown/move-next-forward` | `{}` |
-| Move Next Backward | `POST` | `/api/rundown/move-next-backward` | `{}` |
-| Take Latest Live to Preview | `POST` | `/api/rundown/latest-extern-to-preview` | `{}` |
-| Take Latest SS/DVE to Preview | `POST` | `/api/rundown/latest-ss-dve-to-preview` | `{}` |
-| Run Function | `POST` | `/api/function/run` | `{ functionUid }` |
-| Play Graphic Scene | `POST` | `/api/scene/play` | `{ sceneId }` |
-| Stop Graphic | `POST` | `/api/scene/stop` | `{ graphicChannel, graphicLayer }` |
-| Clear Graphic | `POST` | `/api/scene/clear` | `{ graphicChannel, graphicLayer }` |
-| Stop All Graphic Layers | `POST` | `/api/scene/stop` | `{ graphicChannel, graphicLayer: -1 }` |
-| Clear All Graphic Layers | `POST` | `/api/scene/clear` | `{ graphicChannel, graphicLayer: -1 }` |
-| Load Video | `POST` | `/api/media/load` | `{ videofile, server, layer }` |
-| Play Video (Simple) | `POST` | `/api/media/play` | `{ server, layer }` |
-| Play Video | `POST` | `/api/media/play` | `{ videofile, server, layer }` |
-| Stop Video | `POST` | `/api/media/stop` | `{ server, layer }` |
-| Clear Video | `POST` | `/api/media/clear` | `{ server, layer }` |
+| Companion action              | Method | Endpoint                                    | Request body                                                                                                    |
+| ----------------------------- | ------ | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Switch Input (Program)        | `POST` | `/api/visionMixer/onAir`                    | `{ inputName, transitionStyle, transitionDuration }` or legacy `{ input, transitionStyle, transitionDuration }` |
+| Set Input to Preview          | `POST` | `/api/visionMixer/preview`                  | `{ inputName }` or legacy `{ input }`                                                                           |
+| Take Next                     | `POST` | `/api/rundown/take`                         | `{}` or `{ transitionStyle, transitionDuration }`                                                               |
+| Move Next Forward             | `POST` | `/api/rundown/move-next-forward`            | `{}`                                                                                                            |
+| Move Next Backward            | `POST` | `/api/rundown/move-next-backward`           | `{}`                                                                                                            |
+| Take Latest Live to Preview   | `POST` | `/api/rundown/latest-extern-to-preview`     | `{}`                                                                                                            |
+| Take Latest SS/DVE to Preview | `POST` | `/api/rundown/latest-ss-dve-to-preview`     | `{}`                                                                                                            |
+| Run Function                  | `POST` | `/api/function/run`                         | `{ functionUid }`                                                                                               |
+| Play Graphic Scene            | `POST` | `/api/scene/play`                           | `{ sceneId }`                                                                                                   |
+| Stop Graphic                  | `POST` | `/api/scene/stop`                           | `{ graphicChannel, graphicLayer }`                                                                              |
+| Clear Graphic                 | `POST` | `/api/scene/clear`                          | `{ graphicChannel, graphicLayer }`                                                                              |
+| Stop All Graphic Layers       | `POST` | `/api/scene/stop`                           | `{ graphicChannel, graphicLayer: -1 }`                                                                          |
+| Clear All Graphic Layers      | `POST` | `/api/scene/clear`                          | `{ graphicChannel, graphicLayer: -1 }`                                                                          |
+| Load Video                    | `POST` | `/api/media/load`                           | `{ videofile, server, layer }`                                                                                  |
+| Play Video (Simple)           | `POST` | `/api/media/play`                           | `{ server, layer }`                                                                                             |
+| Play Video                    | `POST` | `/api/media/play`                           | `{ videofile, server, layer }`                                                                                  |
+| Stop Video                    | `POST` | `/api/media/stop`                           | `{ server, layer }`                                                                                             |
+| Clear Video                   | `POST` | `/api/media/clear`                          | `{ server, layer }`                                                                                             |
+| Play Subitem Button           | `POST` | `/api/companion/subitem-buttons/:slot/play` | `{ expectedUid }`                                                                                               |
+
+### Dynamic Subitem Buttons
+
+`GET /api/status` includes a `companion` object containing `selectedItem`, `selectedGroupId`, and `subitemButtons`. `GET /api/companion/subitem-buttons` returns the same object with `ok: true`. The button list follows `_dynamicSubitemButtons` in Falcon Play's `shortcuts.config`; slot 1 refers to the first subitem in the Director control bar for the selected item or story. Each button reports `slot`, `label`, `configured`, `available`, `uid`, `name`, `type`, `thumbnailUrl`, `playing`, `cued`, and `played`. A missing subitem leaves the configured slot present with empty name and URL.
+
+Director sends its selection to Falcon Play over the existing Socket.IO connection. Falcon Play invalidates a manual selection after the on-air UID changes, then selects the new on-air item. Companion reads that state through REST every two seconds. Thumbnail URLs are relative to the Falcon Play server.
+
+`POST /api/companion/subitem-buttons/:slot/play` requires the UID from the latest status as `expectedUid`. A stale UID or missing slot returns HTTP 409 and does not execute an action. Playback requires an active on-air rundown. Scene, video, input, and function subitems follow the same server action paths as their Director control-bar buttons.
+
+`companion.onAirItem`, `companion.cuedItem`, `companion.selectedItem`, and each subitem button include `firstVariableName`, `firstVariableValue`, and `displayText`. Graphic scenes expose the first entry of their saved `variables` object, using that entry's `default` value (or the primitive value for legacy scenes). Non-scalar values produce an empty first-variable value. `displayText` uses a non-empty first value or falls back to the item name. These fields represent configured scene data and do not confirm rendered playout content.
+
+The same objects include `secondVariableName` and `secondVariableValue` for the second saved entry, using the same value rules. Companion can combine the first two non-empty values with a newline.
 
 ---
 
 ## Existing Endpoints (Currently Used)
 
 ### 1. Server Status
+
 **Endpoint:** `GET /api/status`
 
 **Frequency:** Called every 2 seconds
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "version": "0.8.6",
-  "fileServer": {
-    "online": true,
-    "ip": "192.168.1.100",
-    "version": "1.2.0"
-  },
-  "devices": {
-    "visionMixer": true,
-    "mediaPlayer": true,
-    "soundMixer": true,
-    "videoHub": false
-  },
-  "rundown": {
-    "id": "abc123",
-    "name": "Evening Show",
-    "onAirUID": "item_uid_1",
-    "cuedUID": "item_uid_2"
-  },
-  "activeItem": {
-    "uid": "item_uid_1",
-    "name": "Intro Sequence",
-    "label": "Intro",
-    "input": 1
-  },
-  "cuedItem": {
-    "uid": "item_uid_2",
-    "name": "Camera 2",
-    "label": "Cam 2",
-    "input": 2
-  }
+	"ok": true,
+	"version": "0.8.6",
+	"fileServer": {
+		"online": true,
+		"ip": "192.168.1.100",
+		"version": "1.2.0"
+	},
+	"devices": {
+		"visionMixer": true,
+		"mediaPlayer": true,
+		"soundMixer": true,
+		"videoHub": false
+	},
+	"rundown": {
+		"id": "abc123",
+		"name": "Evening Show",
+		"onAirUID": "item_uid_1",
+		"cuedUID": "item_uid_2"
+	},
+	"activeItem": {
+		"uid": "item_uid_1",
+		"name": "Intro Sequence",
+		"label": "Intro",
+		"input": 1
+	},
+	"cuedItem": {
+		"uid": "item_uid_2",
+		"name": "Camera 2",
+		"label": "Cam 2",
+		"input": 2
+	}
 }
 ```
 
 ---
 
 ### 2. List Endpoints
+
 #### `GET /api/inputs`
+
 Returns all vision mixer inputs (cameras, SuperSources, etc.)
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "count": 8,
-  "inputs": [
-    {
-      "input": 1,
-      "name": "CAM 1",
-      "shortName": "C1",
-      "subtype": "input"
-    },
-    {
-      "input": 6010,
-      "name": "SuperSource 1",
-      "shortName": "SS1",
-      "subtype": "SuperSource"
-    }
-  ]
+	"ok": true,
+	"count": 8,
+	"inputs": [
+		{
+			"input": 1,
+			"name": "CAM 1",
+			"shortName": "C1",
+			"subtype": "input"
+		},
+		{
+			"input": 6010,
+			"name": "SuperSource 1",
+			"shortName": "SS1",
+			"subtype": "SuperSource"
+		}
+	]
 }
 ```
 
 #### `GET /api/functions`
+
 Returns all Falcon Play automation functions
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "count": 5,
-  "functions": [
-    {
-      "uid": "k7f2m9x1a",
-      "name": "Open Show",
-      "description": "Plays intro sequence"
-    }
-  ]
+	"ok": true,
+	"count": 5,
+	"functions": [
+		{
+			"uid": "k7f2m9x1a",
+			"name": "Open Show",
+			"description": "Plays intro sequence"
+		}
+	]
 }
 ```
 
 #### `GET /api/scenes`
+
 Returns all saved graphic scenes (CasparCG templates)
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "count": 12,
-  "scenes": [
-    {
-      "id": "a1b2c3d4e",
-      "name": "Lower Third - John Doe",
-      "templateName": "LowerThird",
-      "graphicChannel": "A",
-      "graphicLayer": 1
-    }
-  ]
+	"ok": true,
+	"count": 12,
+	"scenes": [
+		{
+			"id": "a1b2c3d4e",
+			"name": "Lower Third - John Doe",
+			"templateName": "LowerThird",
+			"graphicChannel": "A",
+			"graphicLayer": 1
+		}
+	]
 }
 ```
 
 #### `GET /api/media/videos`
+
 Returns all available video files
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "count": 42,
-  "videos": [
-    "INTRO.mp4",
-    "VT_Interview.mov",
-    "BUMPER_01.mp4"
-  ]
+	"ok": true,
+	"count": 42,
+	"videos": ["INTRO.mp4", "VT_Interview.mov", "BUMPER_01.mp4"]
 }
 ```
 
 ---
 
 ### 3. Vision Mixer Control (Program/Preview)
+
+#### Logical input names (v1.2.0)
+
+Both Program and Preview must accept an `inputName` string as an alternative to the legacy physical `input` value. Resolve the exact named Falcon Play input, including its SuperSource/DVE layout, before executing the action. For example, `{ "inputName": "SS 2-2 (VA)" }` must select that layout even if another named layout shares its mixer input number. Program also accepts `transitionStyle` and `transitionDuration` alongside `inputName`.
+
+New Companion dropdown selections use logical names. Existing numeric selections continue to send `input` and retain their physical-input behavior. To distinguish the current logical layout in feedback, expose its name through `activeItem.inputName`, `activeItem.itemSlug`, or `activeItem.name`; older numeric feedbacks may also use `activeItem.input`.
+
 #### `POST /api/visionMixer/onAir`
+
 Switch a vision mixer input to **Program (on-air)**
 
 **Request:**
+
 ```json
 {
-  "input": 1,
-  "transitionStyle": "cut",
-  "transitionDuration": 0
+	"input": 1,
+	"transitionStyle": "cut",
+	"transitionDuration": 0
 }
 ```
 
@@ -215,6 +248,7 @@ Switch a vision mixer input to **Program (on-air)**
 | `transitionDuration` | number | No | `0` | Duration in frames |
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
@@ -224,13 +258,16 @@ Switch a vision mixer input to **Program (on-air)**
 ## New Endpoints and Required Endpoint Enhancements
 
 ### 4. Vision Mixer Preview Control (NEW)
+
 #### `POST /api/visionMixer/preview`
+
 Switch a vision mixer input to **Preview (PVW)**
 
 **Request:**
+
 ```json
 {
-  "input": 2
+	"input": 2
 }
 ```
 
@@ -240,11 +277,13 @@ Switch a vision mixer input to **Preview (PVW)**
 | `input` | number | Yes | Vision mixer input number |
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
 
 **Errors:**
+
 - `400` — Missing `input`
 - `404` — Input not found
 - `503` — Vision mixer not connected
@@ -252,13 +291,16 @@ Switch a vision mixer input to **Preview (PVW)**
 ---
 
 ### 5. Function Execution
+
 #### `POST /api/function/run`
+
 Execute a Falcon Play automation function
 
 **Request:**
+
 ```json
 {
-  "functionUid": "k7f2m9x1a"
+	"functionUid": "k7f2m9x1a"
 }
 ```
 
@@ -268,6 +310,7 @@ Execute a Falcon Play automation function
 | `functionUid` | string | Yes | The UID from `/api/functions` |
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
@@ -275,13 +318,16 @@ Execute a Falcon Play automation function
 ---
 
 ### 6. Graphic Scene Control
+
 #### `POST /api/scene/play`
+
 Play a graphic scene (CasparCG template)
 
 **Request:**
+
 ```json
 {
-  "sceneId": "a1b2c3d4e"
+	"sceneId": "a1b2c3d4e"
 }
 ```
 
@@ -291,6 +337,7 @@ Play a graphic scene (CasparCG template)
 | `sceneId` | string | Yes | The ID from `/api/scenes` |
 
 **Response:**
+
 ```json
 { "ok": true, "scene": "Lower Third - John Doe" }
 ```
@@ -298,21 +345,24 @@ Play a graphic scene (CasparCG template)
 ---
 
 #### `POST /api/scene/stop` (NEW)
+
 Stop (take off) a graphic with out-animation
 
 **Request:**
+
 ```json
 {
-  "graphicChannel": "A",
-  "graphicLayer": 1
+	"graphicChannel": "A",
+	"graphicLayer": 1
 }
 ```
 
 **Alternative (stop all layers):**
+
 ```json
 {
-  "graphicChannel": "A",
-  "graphicLayer": -1
+	"graphicChannel": "A",
+	"graphicLayer": -1
 }
 ```
 
@@ -323,11 +373,13 @@ Stop (take off) a graphic with out-animation
 | `graphicLayer` | number | Yes | Layer number (1–100), or `-1` for all layers |
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
 
 **Errors:**
+
 - `400` — Missing parameters
 - `404` — Graphic channel/layer not found
 - `503` — Graphics server not connected
@@ -335,21 +387,24 @@ Stop (take off) a graphic with out-animation
 ---
 
 #### `POST /api/scene/clear` (NEW)
+
 Clear (instantly remove) a graphic
 
 **Request:**
+
 ```json
 {
-  "graphicChannel": "A",
-  "graphicLayer": 1
+	"graphicChannel": "A",
+	"graphicLayer": 1
 }
 ```
 
 **Alternative (clear all layers):**
+
 ```json
 {
-  "graphicChannel": "A",
-  "graphicLayer": -1
+	"graphicChannel": "A",
+	"graphicLayer": -1
 }
 ```
 
@@ -360,6 +415,7 @@ Clear (instantly remove) a graphic
 | `graphicLayer` | number | Yes | Layer number (1–100), or `-1` for all layers |
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
@@ -367,15 +423,18 @@ Clear (instantly remove) a graphic
 ---
 
 ### 7. Video Playback Control
+
 #### `POST /api/media/play`
+
 Play a video file
 
 **Request:**
+
 ```json
 {
-  "videofile": "INTRO.mp4",
-  "server": "A",
-  "layer": 1
+	"videofile": "INTRO.mp4",
+	"server": "A",
+	"layer": 1
 }
 ```
 
@@ -387,6 +446,7 @@ Play a video file
 | `layer` | number | No | `1` | CasparCG layer number (1–100) |
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
@@ -394,10 +454,11 @@ Play a video file
 This endpoint should also support a second mode where a previously loaded video is started by channel/layer only.
 
 **Alternate request for Play Video (Simple):**
+
 ```json
 {
-  "server": "A",
-  "layer": 1
+	"server": "A",
+	"layer": 1
 }
 ```
 
@@ -406,20 +467,23 @@ In this mode, Falcon Play should start playback of the media already loaded/cued
 ---
 
 #### `POST /api/media/load`
+
 Cue (load) a video without playing
 
 **Request:**
+
 ```json
 {
-  "videofile": "INTRO.mp4",
-  "server": "A",
-  "layer": 1
+	"videofile": "INTRO.mp4",
+	"server": "A",
+	"layer": 1
 }
 ```
 
 **Parameters:** Same as `/api/media/play`
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
@@ -427,13 +491,15 @@ Cue (load) a video without playing
 ---
 
 #### `POST /api/media/stop` (EXISTING)
+
 Stop a video
 
 **Request:**
+
 ```json
 {
-  "server": "A",
-  "layer": 1
+	"server": "A",
+	"layer": 1
 }
 ```
 
@@ -444,6 +510,7 @@ Stop a video
 | `layer` | number | No | Layer number (default: `1`) |
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
@@ -451,19 +518,22 @@ Stop a video
 ---
 
 #### `POST /api/media/clear` (EXISTING)
+
 Remove a video completely
 
 **Request:**
+
 ```json
 {
-  "server": "A",
-  "layer": 1
+	"server": "A",
+	"layer": 1
 }
 ```
 
 **Parameters:** Same as `/api/media/stop`
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
@@ -471,18 +541,22 @@ Remove a video completely
 ---
 
 ### 8. Rundown Control
+
 #### `POST /api/rundown/take`
+
 Advance the rundown (take cued item on-air)
 
 **Request:**
+
 ```json
 {
-  "transitionStyle": "cut",
-  "transitionDuration": 0
+	"transitionStyle": "cut",
+	"transitionDuration": 0
 }
 ```
 
 **Alternate request using the item's default transition:**
+
 ```json
 {}
 ```
@@ -494,32 +568,37 @@ Advance the rundown (take cued item on-air)
 | `transitionDuration` | number | No | item default | Duration in frames; only sent when `transitionStyle` is explicitly set |
 
 **Response:**
+
 ```json
 { "ok": true }
 ```
 
 **Errors:**
+
 - `400` — No rundown active
 - `503` — Rundown manager not connected
 
 ---
 
 #### `POST /api/rundown/move-next-forward`
+
 Move the cued item one step forward in the active rundown without taking it on-air.
 
 **Request:**
+
 ```json
 {}
 ```
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "moved": true,
-  "cuedUID": "abc123",
-  "cuedIndex": 7,
-  "itemName": "My Next Item"
+	"ok": true,
+	"moved": true,
+	"cuedUID": "abc123",
+	"cuedIndex": 7,
+	"itemName": "My Next Item"
 }
 ```
 
@@ -535,25 +614,29 @@ Move the cued item one step forward in the active rundown without taking it on-a
 | `itemName` | string or null | Name of the cued item after the operation |
 
 **Errors:**
+
 - `400` — No rundown is on-air or the rundown is empty
 - `500` — Internal server error
 
 #### `POST /api/rundown/move-next-backward`
+
 Move the cued item one step backward in the active rundown without taking it on-air.
 
 **Request:**
+
 ```json
 {}
 ```
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "moved": true,
-  "cuedUID": "abc123",
-  "cuedIndex": 5,
-  "itemName": "Previous Item"
+	"ok": true,
+	"moved": true,
+	"cuedUID": "abc123",
+	"cuedIndex": 5,
+	"itemName": "Previous Item"
 }
 ```
 
@@ -562,10 +645,12 @@ Move the cued item one step backward in the active rundown without taking it on-
 **Response fields:** Same as `/api/rundown/move-next-forward`
 
 **Errors:**
+
 - `400` — No rundown is on-air or the rundown is empty
 - `500` — Internal server error
 
 **Behavior notes for both move endpoints:**
+
 - These operations adjust cue position only; they do not trigger playback or transition.
 - They use force-cue semantics internally.
 - They clamp at the rundown boundaries.
@@ -574,19 +659,22 @@ Move the cued item one step backward in the active rundown without taking it on-
 ---
 
 #### `POST /api/rundown/latest-extern-to-preview`
+
 Cue the most recently played live/Extern input as the next temporary preview item.
 
 **Request:**
+
 ```json
 {}
 ```
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "uid": "a3f9c2x1b",
-  "name": "EXT 1"
+	"ok": true,
+	"uid": "a3f9c2x1b",
+	"name": "EXT 1"
 }
 ```
 
@@ -597,10 +685,12 @@ Cue the most recently played live/Extern input as the next temporary preview ite
 | `name` | string | Name of the inserted input |
 
 **Errors:**
+
 - `400` — No on-air rundown, or no on-air item to insert after
 - `404` — No Extern input found in the played history of the active rundown
 
 **Behavior:**
+
 - Searches backward through the played history, starting at the current on-air item.
 - Inserts a temporary preview item immediately after the current on-air item.
 - Replaces any existing temporary item at the preview position.
@@ -608,29 +698,34 @@ Cue the most recently played live/Extern input as the next temporary preview ite
 - Does not perform TAKE or transition by itself.
 
 #### `POST /api/rundown/latest-ss-dve-to-preview`
+
 Cue the most recently played SuperSource or DVE input as the next temporary preview item.
 
 **Request:**
+
 ```json
 {}
 ```
 
 **Response:**
+
 ```json
 {
-  "ok": true,
-  "uid": "b7d1e4m2c",
-  "name": "SuperSource 1"
+	"ok": true,
+	"uid": "b7d1e4m2c",
+	"name": "SuperSource 1"
 }
 ```
 
 **Response fields:** Same as `/api/rundown/latest-extern-to-preview`
 
 **Errors:**
+
 - `400` — No on-air rundown, or no on-air item to insert after
 - `404` — No SuperSource or DVE input found in the played history of the active rundown
 
 **Behavior:**
+
 - Searches backward through the played history for the latest input with subtype `SuperSource` or `DVE`.
 - Inserts and force-cues a temporary preview item.
 - Replaces any existing temporary item at the preview position.
@@ -642,17 +737,17 @@ Cue the most recently played SuperSource or DVE input as the next temporary prev
 
 The following items must be implemented for full Companion module compatibility:
 
-| Endpoint | Method | Type | Purpose | Priority |
-|---|---|---|---|---|
-| `/api/visionMixer/preview` | `POST` | New endpoint | Set input to Preview/PVW | **HIGH** |
-| `/api/scene/stop` | `POST` | New endpoint | Stop graphic(s) with animation | **HIGH** |
-| `/api/scene/clear` | `POST` | New endpoint | Clear graphic(s) instantly | **HIGH** |
-| `/api/media/play` | `POST` | Enhance existing endpoint | Accept both `{ videofile, server, layer }` and `{ server, layer }` | **HIGH** |
-| `/api/rundown/take` | `POST` | Enhance existing endpoint | Accept `{}` for item default transition or `{ transitionStyle, transitionDuration }` | **HIGH** |
-| `/api/rundown/move-next-forward` | `POST` | New endpoint | Move cued item one step forward | **HIGH** |
-| `/api/rundown/move-next-backward` | `POST` | New endpoint | Move cued item one step backward | **HIGH** |
-| `/api/rundown/latest-extern-to-preview` | `POST` | New endpoint | Cue latest live/Extern item to preview | **HIGH** |
-| `/api/rundown/latest-ss-dve-to-preview` | `POST` | New endpoint | Cue latest SuperSource or DVE item to preview | **HIGH** |
+| Endpoint                                | Method | Type                      | Purpose                                                                              | Priority |
+| --------------------------------------- | ------ | ------------------------- | ------------------------------------------------------------------------------------ | -------- |
+| `/api/visionMixer/preview`              | `POST` | New endpoint              | Set input to Preview/PVW                                                             | **HIGH** |
+| `/api/scene/stop`                       | `POST` | New endpoint              | Stop graphic(s) with animation                                                       | **HIGH** |
+| `/api/scene/clear`                      | `POST` | New endpoint              | Clear graphic(s) instantly                                                           | **HIGH** |
+| `/api/media/play`                       | `POST` | Enhance existing endpoint | Accept both `{ videofile, server, layer }` and `{ server, layer }`                   | **HIGH** |
+| `/api/rundown/take`                     | `POST` | Enhance existing endpoint | Accept `{}` for item default transition or `{ transitionStyle, transitionDuration }` | **HIGH** |
+| `/api/rundown/move-next-forward`        | `POST` | New endpoint              | Move cued item one step forward                                                      | **HIGH** |
+| `/api/rundown/move-next-backward`       | `POST` | New endpoint              | Move cued item one step backward                                                     | **HIGH** |
+| `/api/rundown/latest-extern-to-preview` | `POST` | New endpoint              | Cue latest live/Extern item to preview                                               | **HIGH** |
+| `/api/rundown/latest-ss-dve-to-preview` | `POST` | New endpoint              | Cue latest SuperSource or DVE item to preview                                        | **HIGH** |
 
 All other endpoints are already implemented or already match the Companion module's expectations.
 
@@ -749,3 +844,16 @@ curl -X POST http://localhost/api/scene/clear \
 6. **Program vs rundown transitions:** `POST /api/visionMixer/onAir` always receives explicit transition settings from Companion, while `POST /api/rundown/take` may receive either explicit transition settings or an empty body to mean "use the item's default transition".
 7. **Cue move operations:** `POST /api/rundown/move-next-forward` and `POST /api/rundown/move-next-backward` should be safe to call repeatedly and should return updated cue metadata so Companion can log or display the result.
 8. **Latest-to-preview operations:** `POST /api/rundown/latest-extern-to-preview` and `POST /api/rundown/latest-ss-dve-to-preview` should insert a temporary preview item and return the new item's `uid` and `name`.
+
+## Favorites
+
+The server persists a shared ordered list in `config/favorites.config` on Falcon Play, separately from rundowns. The list has no fixed entry limit. Director receives all entries; Companion exposes positions 1–99. `/api/status` now includes `companion.favoriteButtons` (always 99 slots), `favoriteCount`, and `favoritesRevision` alongside the existing Subitems fields. Slots contain the same text, graphic-variable, image, availability and runtime-state fields as Subitems. Empty slots have a null UID. Filled slot UIDs identify a favorite independently of its current position.
+
+- `GET /api/favorites`: full list snapshot, including source and resolved item for Director rendering.
+- `POST /api/favorites`: `{revision, item, source:{kind,id}}`; kind is `video`, `scene`, `function`, or `snapshot`. Only video/scene/function items are accepted. Source-backed entries resolve current saved library values; snapshots retain their own values.
+- `PUT /api/favorites/order`: `{revision, ids:[favoriteUid,...]}`; every current favorite must occur exactly once.
+- `DELETE /api/favorites/:id`: `{revision}`. Remaining positions close the gap.
+- `GET /api/companion/favorite-buttons`: compact 99-slot snapshot.
+- `POST /api/companion/favorite-buttons/:slot/play`: `{expectedUid}`; rejects a changed/empty/unavailable position with HTTP 409. Favorites can be triggered without an active rundown through the existing media/function action paths.
+
+Mutations are serialized and written atomically. A stale revision receives HTTP 409. `favoritesChanged` notifies connected Directors. Thumbnail reads use the existing graphics/video endpoints. Played means a successful trigger in the current process; playing/cued are derived from available device/runtime state. No playback is performed by list mutation or reordering.

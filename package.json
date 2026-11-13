@@ -1,10 +1,11 @@
 {
 	"name": "companion-module-wearefalcon-falconplay",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"main": "src/main.js",
 	"scripts": {
 		"format": "prettier -w .",
-		"package": "companion-module-build"
+		"package": "companion-module-build",
+		"test": "node --test test/*.test.js"
 	},
 	"license": "MIT",
 	"repository": {
@@ -16,7 +17,9 @@
 		"yarn": "^4"
 	},
 	"dependencies": {
-		"@companion-module/base": "~1.12.1"
+		"@companion-module/base": "~1.12.1",
+		"jpeg-js": "^0.4.4",
+		"pngjs": "^7.0.0"
 	},
 	"devDependencies": {
 		"@companion-module/tools": "^2.8.0",

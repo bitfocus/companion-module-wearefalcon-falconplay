@@ -1,12 +1,18 @@
+const Favorites = require('./favorites')
+const { buildInputChoices, buildInputRequest } = require('./inputSelection')
+
 module.exports = (self) => {
 	// Build dropdown choices from cached lists
-	const inputChoices = self.inputs.map((inp) => ({ id: inp.input, label: inp.name }))
+	const inputChoices = buildInputChoices(self.inputs)
 	const functionChoices = self.functions.map((fn) => ({ id: fn.uid, label: fn.name }))
 	const sceneChoices = self.scenes.map((sc) => ({ id: sc.id, label: sc.name }))
 	const videoChoices = self.videos.map((v) => {
 		const name = typeof v === 'string' ? v : v.name || v.filename || String(v)
 		return { id: name, label: name }
 	})
+	const subitemButtonChoices = self.subitemButtons?.length
+		? self.subitemButtons.map((button) => ({ id: button.slot, label: `${button.label}: ${button.name || 'Empty'}` }))
+		: [{ id: 0, label: 'No subitem buttons configured' }]
 
 	const transitionChoices = [
 		{ id: 'cut', label: 'Cut' },
@@ -31,6 +37,36 @@ module.exports = (self) => {
 	})
 
 	self.setActionDefinitions({
+		...Favorites.actions(self),
+		playSubitemButton: {
+			name: 'Play Subitem Button',
+			description: 'Play the subitem in a configured button position for the selected on-air story',
+			options: [
+				{
+					type: 'dropdown',
+					id: 'slot',
+					label: 'Subitem Button',
+					choices: subitemButtonChoices,
+					default: subitemButtonChoices[0].id,
+				},
+			],
+			callback: async (action) => {
+				const slot = Number(action.options.slot)
+				const button = self.serverStatus?.companion?.subitemButtons?.[slot - 1]
+				if (!button?.available || !button.uid) {
+					self.log('warn', `Subitem button ${slot} is not available for the selected story`)
+					return
+				}
+				try {
+					const result = await self.httpPost(`/api/companion/subitem-buttons/${slot}/play`, {
+						expectedUid: button.uid,
+					})
+					if (!result.ok) self.log('error', `Play Subitem Button failed: ${result.error}`)
+				} catch (err) {
+					self.log('error', `Play Subitem Button error: ${err.message}`)
+				}
+			},
+		},
 		// --- Switch Input / Camera ---
 		switchInput: {
 			name: 'Switch Input (Program)',
@@ -62,7 +98,7 @@ module.exports = (self) => {
 			callback: async (action) => {
 				try {
 					const result = await self.httpPost('/api/visionMixer/onAir', {
-						input: action.options.input,
+						...buildInputRequest(action.options.input),
 						transitionStyle: action.options.transitionStyle,
 						transitionDuration: action.options.transitionDuration,
 					})
@@ -90,9 +126,7 @@ module.exports = (self) => {
 			],
 			callback: async (action) => {
 				try {
-					const result = await self.httpPost('/api/visionMixer/preview', {
-						input: action.options.input,
-					})
+					const result = await self.httpPost('/api/visionMixer/preview', buildInputRequest(action.options.input))
 					if (!result.ok) {
 						self.log('error', `Set Input to Preview failed: ${result.error}`)
 					}
