@@ -2,6 +2,17 @@
 
 Control **Falcon Play Server** from Companion and Stream Deck through Falcon Play's REST API. Trigger inputs, rundown items, graphics, videos, functions, Subitems, and Favorites, with live button text, thumbnails, state feedbacks, and variables.
 
+## What's fixed in 1.2.1
+
+- Keeps every active Favorite/Subitem thumbnail cached, including more than 64 simultaneous images, while preserving the 15-second revalidation interval.
+- Sends only changed variable values and checks feedbacks whose inputs changed. Unchanged library lists no longer rebuild action/feedback definitions, and story-name changes update dropdown labels without rebuilding presets.
+- Separates network failures from logged status-processing errors.
+- Rejects unsupported thumbnail formats such as WebP before downloading their image bodies or publishing them.
+- Hides Favorite Text's Thumbnail layout until Show Thumbnail is enabled.
+- Documents every variable in Companion's built-in Help and removes the unused root-level source copies.
+
+See [1.2.1 release notes](RELEASE_NOTES_v1.2.1.md) for the review corrections and validation scope.
+
 ## What's new in 1.2.0
 
 Compared with 1.1.0, this release adds:

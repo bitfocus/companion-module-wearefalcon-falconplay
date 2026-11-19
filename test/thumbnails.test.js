@@ -1,8 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { readFileSync } = require('node:fs')
-const { createRequire } = require('node:module')
-const vm = require('node:vm')
+const moduleHarness = require('./helpers/moduleHarness')
 const jpeg = require('jpeg-js')
 const { PNG } = require('pngjs')
 const { renderThumbnail, getSubitemThumbnail } = require('../src/thumbnails')
@@ -89,41 +87,9 @@ test('Item Text can combine its name fallback with the thumbnail without changin
 })
 
 function mainHarness(fetchImage) {
-	const filename = require.resolve('../src/main')
-	const localRequire = createRequire(filename)
-	let Instance
-	let now = 100000
-	const context = {
-		require: (id) =>
-			id === '@companion-module/base'
-				? {
-						InstanceBase: class {},
-						runEntrypoint: (value) => {
-							Instance = value
-						},
-					}
-				: localRequire(id),
-		Buffer,
-		AbortSignal,
-		fetch: fetchImage,
-		Date: { now: () => now },
-	}
-	vm.runInNewContext(readFileSync(filename, 'utf8'), context, { filename })
-	const self = new Instance()
-	self.config = { host: 'play', port: '80' }
-	self.serverStatus = state('').serverStatus
-	const updates = []
-	const checks = []
-	self.setVariableValues = (value) => updates.push(value)
-	self.checkFeedbacks = (...ids) => checks.push(ids)
-	return {
-		self,
-		updates,
-		checks,
-		advance: (ms) => {
-			now += ms
-		},
-	}
+	const harness = moduleHarness(fetchImage)
+	harness.self.serverStatus = state('').serverStatus
+	return harness
 }
 
 test('thumbnail downloads are deduplicated and revalidate an image changed at the same URL', async () => {
@@ -146,7 +112,7 @@ test('thumbnail downloads are deduplicated and revalidate an image changed at th
 	const first = self.thumbnailCache.get('http://play:80/thumb.jpg')
 	assert.equal(calls.length, 1)
 	assert.equal(updates.length, 1)
-	assert.deepEqual(checks[0], ['subitemThumbnail', 'itemText', 'favoriteThumbnail', 'favoriteText'])
+	assert.deepEqual(checks[0], ['subitemThumbnail', 'itemText'])
 	await refresh()
 	assert.equal(calls.length, 1)
 	harness.advance(15000)

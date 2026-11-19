@@ -66,8 +66,6 @@ function getSubitemThumbnail(self, slot, layout = 'background', collection = 'su
 		}
 		cached = { dataUri, style }
 		self.thumbnailRenderCache.set(key, cached)
-		if (self.thumbnailRenderCache.size > 128)
-			self.thumbnailRenderCache.delete(self.thumbnailRenderCache.keys().next().value)
 	}
 	return cached.style
 }

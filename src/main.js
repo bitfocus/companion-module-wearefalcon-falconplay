@@ -18,12 +18,14 @@ class ModuleInstance extends InstanceBase {
 		this.videos = []
 		this.subitemButtons = []
 		this.favoriteButtons = []
-		this.favoriteThumbnailPublished = []
 		this.thumbnailCache = new Map()
 		this.thumbnailRequests = new Map()
 		this.thumbnailCheckedAt = new Map()
 		this.thumbnailValidators = new Map()
-		this.thumbnailPublished = []
+		this.activeThumbnailUrls = new Set()
+		this.thumbnailWarnings = new Map()
+		this.lastVars = {}
+		this.feedbackSignatures = new Map()
 		this.pollGeneration = 0
 		this.statusSequence = 0
 		this.lastAppliedSequence = 0
@@ -132,10 +134,21 @@ class ModuleInstance extends InstanceBase {
 	async pollStatus() {
 		const generation = this.pollGeneration
 		const sequence = ++this.statusSequence
+		let data
+		let networkFailed = false
 		try {
-			const data = await this.httpGet('/api/status')
-			if (generation !== this.pollGeneration || sequence < this.lastAppliedSequence) return
-			this.lastAppliedSequence = sequence
+			data = await this.httpGet('/api/status')
+		} catch {
+			networkFailed = true
+		}
+		if (generation !== this.pollGeneration || sequence < this.lastAppliedSequence) return
+		this.lastAppliedSequence = sequence
+		try {
+			if (networkFailed) {
+				this.clearServerStatus()
+				this.updateStatus(InstanceStatus.ConnectionFailure, 'Cannot reach Falcon Play')
+				return
+			}
 			if (data.ok) {
 				this.serverStatus = data
 				const buttons = data.companion?.subitemButtons || []
@@ -152,34 +165,33 @@ class ModuleInstance extends InstanceBase {
 				this.subitemButtons = buttons
 				this.favoriteButtons = favoriteButtons
 				if (countChanged) {
-					this.thumbnailPublished = []
 					this.updateVariableDefinitions()
+					this.updatePresets()
 				}
 				if (oldChoices !== newChoices) {
 					this.updateActions()
 					this.updateFeedbacks()
-					this.updatePresets()
 				}
-				this.updateStatus(InstanceStatus.Ok)
 				this.updateVariableValues(data)
 				this.refreshThumbnailVariables(data)
-				this.checkFeedbacks()
+				this.checkStatusFeedbacks()
+				this.updateStatus(InstanceStatus.Ok)
 			} else {
 				this.clearServerStatus()
 				this.updateStatus(InstanceStatus.UnknownError, data.error || 'Unknown error')
 			}
-		} catch {
-			if (generation !== this.pollGeneration || sequence < this.lastAppliedSequence) return
-			this.lastAppliedSequence = sequence
-			this.clearServerStatus()
-			this.updateStatus(InstanceStatus.ConnectionFailure, 'Cannot reach Falcon Play')
+		} catch (error) {
+			const message = error?.message || String(error)
+			this.log('error', `Status processing failed: ${message}`)
+			this.updateStatus(InstanceStatus.UnknownError, message)
 		}
 	}
 
 	clearServerStatus() {
 		this.serverStatus = null
 		this.updateVariableValues({})
-		this.checkFeedbacks()
+		this.refreshThumbnailVariables({})
+		this.checkStatusFeedbacks()
 	}
 
 	async refreshLists() {
@@ -193,25 +205,30 @@ class ModuleInstance extends InstanceBase {
 		let listsChanged = false
 
 		if (results[0].status === 'fulfilled' && results[0].value.ok) {
-			this.inputs = results[0].value.inputs || []
-			listsChanged = true
+			const inputs = results[0].value.inputs || []
+			listsChanged ||= JSON.stringify(this.inputs) !== JSON.stringify(inputs)
+			this.inputs = inputs
 		}
 		if (results[1].status === 'fulfilled' && results[1].value.ok) {
-			this.functions = results[1].value.functions || []
-			listsChanged = true
+			const functions = results[1].value.functions || []
+			listsChanged ||= JSON.stringify(this.functions) !== JSON.stringify(functions)
+			this.functions = functions
 		}
 		if (results[2].status === 'fulfilled' && results[2].value.ok) {
-			this.scenes = results[2].value.scenes || []
-			listsChanged = true
+			const scenes = results[2].value.scenes || []
+			listsChanged ||= JSON.stringify(this.scenes) !== JSON.stringify(scenes)
+			this.scenes = scenes
 		}
 		if (results[3].status === 'fulfilled' && results[3].value.ok) {
-			this.videos = results[3].value.videos || []
-			listsChanged = true
+			const videos = results[3].value.videos || []
+			listsChanged ||= JSON.stringify(this.videos) !== JSON.stringify(videos)
+			this.videos = videos
 		}
 
 		if (listsChanged) {
 			this.updateActions()
 			this.updateFeedbacks()
+			this.checkStatusFeedbacks()
 		}
 	}
 
@@ -257,9 +274,9 @@ class ModuleInstance extends InstanceBase {
 			vars[`${prefix}_second_variable_value`] = text.secondVariableValue
 			vars[`${prefix}_display_text`] = text.displayText
 		}
-		for (const [collection, count, slotPrefix, published] of [
-			['subitemButtons', this.subitemButtons.length, 'subitem', this.thumbnailPublished],
-			['favoriteButtons', FAVORITE_SLOTS, 'favorite', this.favoriteThumbnailPublished],
+		for (const [collection, count, slotPrefix] of [
+			['subitemButtons', this.subitemButtons.length, 'subitem'],
+			['favoriteButtons', FAVORITE_SLOTS, 'favorite'],
 		]) {
 			for (let index = 0; index < count; index++) {
 				const button = companion[collection]?.[index] || {}
@@ -274,86 +291,180 @@ class ModuleInstance extends InstanceBase {
 				vars[`${prefix}uid`] = button.uid || ''
 				vars[`${prefix}type`] = button.type || ''
 				vars[`${prefix}thumbnail_url`] = button.thumbnailUrl ? `${this.getBaseUrl()}${button.thumbnailUrl}` : ''
-				const thumbnail = button.thumbnailUrl
-					? this.thumbnailCache.get(`${this.getBaseUrl()}${button.thumbnailUrl}`) || ''
-					: ''
-				if (published[index] !== thumbnail) {
-					vars[`${prefix}thumbnail`] = thumbnail
-					published[index] = thumbnail
-				}
+				vars[`${prefix}thumbnail`] =
+					button.available && button.thumbnailUrl
+						? this.thumbnailCache.get(`${this.getBaseUrl()}${button.thumbnailUrl}`) || ''
+						: ''
 				vars[`${prefix}available`] = button.available ? 'Yes' : 'No'
 				vars[`${prefix}playing`] = button.playing ? 'Yes' : 'No'
 				vars[`${prefix}cued`] = button.cued ? 'Yes' : 'No'
 				vars[`${prefix}played`] = button.played ? 'Yes' : 'No'
 			}
 		}
-		this.setVariableValues(vars)
+		this.publishVariableValues(vars)
+	}
+
+	publishVariableValues(vars) {
+		const changed = {}
+		for (const [id, value] of Object.entries(vars)) {
+			if (this.lastVars[id] !== value) changed[id] = value
+		}
+		if (Object.keys(changed).length) {
+			this.setVariableValues(changed)
+			Object.assign(this.lastVars, changed)
+		}
+	}
+
+	checkStatusFeedbacks() {
+		const data = this.serverStatus || {}
+		const companion = data.companion || {}
+		const subitems = companion.subitemButtons || []
+		const favorites = companion.favoriteButtons || []
+		const text = (item) => getItemTextFields(item)
+		const slotText = (buttons) => buttons.map((button) => text(button.available ? button : null))
+		const images = (buttons) => buttons.map((button) => [!!button.available, button.thumbnailUrl || ''])
+		const subitemImages = images(subitems)
+		const favoriteImages = images(favorites)
+		const signatures = {
+			connectionStatus: !!data.ok,
+			deviceStatus: ['visionMixer', 'mediaPlayer', 'soundMixer', 'videoHub'].map((id) => !!data.devices?.[id]),
+			onAirInput: [
+				data.activeItem?.input,
+				data.activeItem?.inputName,
+				data.activeItem?.itemSlug,
+				data.activeItem?.name,
+				this.inputs.map((input) => [input.input, input.name]),
+			],
+			fileServerOnline: data.fileServer?.online === true,
+			rundownOnAir: !!data.rundown?.onAirUID,
+			cuedItemPresent: !!data.rundown?.cuedUID,
+			selectedItemPresent: !!(companion.selectedItem || companion.selectedGroupId),
+			itemText: [
+				['onair', 'cued', 'selected'].map((source) => text(getFeedbackItem(data, source))),
+				slotText(subitems),
+				slotText(favorites),
+				subitemImages,
+				favoriteImages,
+			],
+			favoriteText: [slotText(favorites), favoriteImages],
+			subitemThumbnail: subitemImages,
+			favoriteThumbnail: favoriteImages,
+		}
+		for (const [prefix, buttons] of [
+			['subitem', subitems],
+			['favorite', favorites],
+		]) {
+			for (const [suffix, field] of [
+				['Available', 'available'],
+				['Playing', 'playing'],
+				['Cued', 'cued'],
+				['Played', 'played'],
+			]) {
+				signatures[`${prefix}${suffix}`] = buttons.map((button) => button[field] === true)
+			}
+		}
+		const changed = Object.entries(signatures)
+			.map(([id, value]) => [id, JSON.stringify(value)])
+			.filter(([id, value]) => this.feedbackSignatures.get(id) !== value)
+		if (changed.length) {
+			this.checkFeedbacks(...changed.map(([id]) => id))
+			for (const [id, value] of changed) this.feedbackSignatures.set(id, value)
+		}
 	}
 
 	refreshThumbnailVariables(data) {
 		const generation = this.pollGeneration
-		for (const [collection, prefix, published] of [
-			['subitemButtons', 'subitem', this.thumbnailPublished],
-			['favoriteButtons', 'favorite', this.favoriteThumbnailPublished],
+		const base = this.getBaseUrl()
+		const active = new Set(
+			['subitemButtons', 'favoriteButtons'].flatMap((collection) =>
+				(data.companion?.[collection] || [])
+					.filter((button) => button.available && button.thumbnailUrl)
+					.map((button) => `${base}${button.thumbnailUrl}`),
+			),
+		)
+		this.activeThumbnailUrls = active
+		// Keep every active image, including all 99 Favorites and configured Subitems.
+		for (const cache of [
+			this.thumbnailCache,
+			this.thumbnailCheckedAt,
+			this.thumbnailValidators,
+			this.thumbnailWarnings,
 		]) {
-			for (const button of data.companion?.[collection] || []) {
-				if (!button.thumbnailUrl || !button.available) continue
-				const url = `${this.getBaseUrl()}${button.thumbnailUrl}`
-				if (this.thumbnailRequests.has(url) || Date.now() - (this.thumbnailCheckedAt.get(url) || 0) < 15000) continue
-				this.thumbnailCheckedAt.set(url, Date.now())
-				if (this.thumbnailCheckedAt.size > 64)
-					this.thumbnailCheckedAt.delete(this.thumbnailCheckedAt.keys().next().value)
-				const publish = (dataUri) => {
-					const current = this.serverStatus?.companion?.[collection]?.[button.slot - 1]
-					if (
-						generation !== this.pollGeneration ||
-						url !== `${this.getBaseUrl()}${button.thumbnailUrl}` ||
-						!current?.available ||
-						current.thumbnailUrl !== button.thumbnailUrl ||
-						published[button.slot - 1] === dataUri
-					)
-						return
-					published[button.slot - 1] = dataUri
-					this.setVariableValues({ [`${prefix}_${button.slot}_thumbnail`]: dataUri })
-					this.checkFeedbacks('subitemThumbnail', 'itemText', 'favoriteThumbnail', 'favoriteText')
-				}
-				const request = (async () => {
-					try {
-						const validators = this.thumbnailValidators.get(url) || {}
-						const response = await fetch(url, { headers: validators, signal: AbortSignal.timeout(5000) })
-						if (response.status === 304) return
-						if (response.status === 404 || response.status === 410) {
-							this.thumbnailCache.delete(url)
-							this.thumbnailValidators.delete(url)
-							publish('')
-							return
+			for (const url of cache.keys()) if (!active.has(url)) cache.delete(url)
+		}
+		for (const key of this.thumbnailRenderCache?.keys() || []) {
+			if (!active.has(key.slice(0, key.lastIndexOf(':')))) this.thumbnailRenderCache.delete(key)
+		}
+		for (const url of active) {
+			const lastChecked = this.thumbnailCheckedAt.get(url)
+			if (this.thumbnailRequests.has(url) || (lastChecked !== undefined && Date.now() - lastChecked < 15000)) continue
+			this.thumbnailCheckedAt.set(url, Date.now())
+			const isCurrent = () => generation === this.pollGeneration && this.activeThumbnailUrls.has(url)
+			const publish = (dataUri) => {
+				if (!isCurrent()) return
+				const vars = {}
+				const feedbacks = new Set()
+				for (const [collection, prefix] of [
+					['subitemButtons', 'subitem'],
+					['favoriteButtons', 'favorite'],
+				]) {
+					for (const button of this.serverStatus?.companion?.[collection] || []) {
+						const id = `${prefix}_${button.slot}_thumbnail`
+						if (
+							button.available &&
+							`${this.getBaseUrl()}${button.thumbnailUrl}` === url &&
+							this.lastVars[id] !== dataUri
+						) {
+							vars[id] = dataUri
+							feedbacks.add(`${prefix}Thumbnail`)
+							feedbacks.add('itemText')
+							if (prefix === 'favorite') feedbacks.add('favoriteText')
 						}
-						const size = Number(response.headers.get('content-length'))
-						const mime = response.headers.get('content-type')?.split(';')[0]
-						if (!response.ok || !['image/jpeg', 'image/png', 'image/webp'].includes(mime) || size > 1024 * 1024) return
-						const bytes = Buffer.from(await response.arrayBuffer())
-						if (bytes.length > 1024 * 1024) return
-						const dataUri = `data:${mime};base64,${bytes.toString('base64')}`
-						this.thumbnailCache.set(url, dataUri)
-						const nextValidators = {}
-						if (response.headers.get('etag')) nextValidators['If-None-Match'] = response.headers.get('etag')
-						if (response.headers.get('last-modified'))
-							nextValidators['If-Modified-Since'] = response.headers.get('last-modified')
-						this.thumbnailValidators.set(url, nextValidators)
-						if (this.thumbnailCache.size > 64) {
-							const oldest = this.thumbnailCache.keys().next().value
-							this.thumbnailCache.delete(oldest)
-							this.thumbnailValidators.delete(oldest)
-						}
-						publish(dataUri)
-					} catch {
-						// A missing thumbnail leaves the URL available for another image source.
-					} finally {
-						this.thumbnailRequests.delete(url)
 					}
-				})()
-				this.thumbnailRequests.set(url, request)
+				}
+				this.publishVariableValues(vars)
+				if (feedbacks.size) this.checkFeedbacks(...feedbacks)
 			}
+			const request = (async () => {
+				try {
+					const validators = this.thumbnailValidators.get(url) || {}
+					const response = await fetch(url, { headers: validators, signal: AbortSignal.timeout(5000) })
+					if (!isCurrent() || response.status === 304) return
+					if (response.status === 404 || response.status === 410) {
+						this.thumbnailCache.delete(url)
+						this.thumbnailValidators.delete(url)
+						publish('')
+						return
+					}
+					const size = Number(response.headers.get('content-length'))
+					const mime = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() || 'unknown'
+					if (!response.ok || size > 1024 * 1024) return
+					if (!['image/jpeg', 'image/png'].includes(mime)) {
+						if (this.thumbnailWarnings.get(url) !== mime) {
+							this.log('debug', `Unsupported thumbnail format: ${mime || 'unknown'}; expected JPEG or PNG`)
+							this.thumbnailWarnings.set(url, mime)
+						}
+						this.thumbnailCache.delete(url)
+						this.thumbnailValidators.delete(url)
+						publish('')
+						return
+					}
+					const bytes = Buffer.from(await response.arrayBuffer())
+					if (!isCurrent() || bytes.length > 1024 * 1024) return
+					const dataUri = `data:${mime};base64,${bytes.toString('base64')}`
+					this.thumbnailCache.set(url, dataUri)
+					this.thumbnailWarnings.delete(url)
+					const nextValidators = {}
+					if (response.headers.get('etag')) nextValidators['If-None-Match'] = response.headers.get('etag')
+					if (response.headers.get('last-modified'))
+						nextValidators['If-Modified-Since'] = response.headers.get('last-modified')
+					this.thumbnailValidators.set(url, nextValidators)
+					publish(dataUri)
+				} catch {
+					// A missing thumbnail leaves the URL available for another image source.
+				}
+			})().finally(() => this.thumbnailRequests.delete(url))
+			this.thumbnailRequests.set(url, request)
 		}
 	}
 
@@ -369,6 +480,7 @@ class ModuleInstance extends InstanceBase {
 
 	updateVariableDefinitions() {
 		UpdateVariableDefinitions(this)
+		this.lastVars = {}
 	}
 
 	updatePresets() {

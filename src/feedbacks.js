@@ -251,7 +251,7 @@ module.exports = (self) => {
 				.filter((option) => ['format', 'showThumbnail', 'thumbnailLayout'].includes(option.id))
 				.map((option) => {
 					const { isVisibleExpression, ...copy } = option
-					return copy
+					return option.id === 'thumbnailLayout' ? { ...copy, isVisibleExpression: '$(options:showThumbnail)' } : copy
 				}),
 		],
 		callback: (feedback) =>
